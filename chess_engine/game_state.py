@@ -1,8 +1,9 @@
 from chess_engine.board import Board
 from chess_engine.move_generator import MoveGenerator
 from chess_engine.pieces import Pawn, Rook, Knight, King,Queen,Bishop
+from chess_engine.clock import ChessClock
 class GameState:
-    def __init__(self):
+    def __init__(self,minutes=10,increment_seconds =0):
         self.board = Board()
         self.move_generator = MoveGenerator(self.board)
         self.current_turn = 'white'
@@ -10,6 +11,9 @@ class GameState:
         self.move_history = []
         self.status = 'active'
         self.winner = None
+        self.clock = ChessClock(minutes, increment_seconds)
+        self.clock.start('white')
+
     def make_move(self,from_notation, to_notation,promotion_piece = 'Q'):
         from_row, from_col = self.board.notation_to_coords(from_notation)
         to_row, to_col = self.board.notation_to_coords(to_notation)
@@ -39,16 +43,32 @@ class GameState:
             'special': move_info.get('special'),
             'move_number': len(self.move_history)+1
         })
-        self.current_turn = 'black' if self.current_turn == 'white' else 'white'
+        self.clock.press(self.current_turn)
+        time_spent = self.clock.press(self.current_turn)
+        self.move_history[-1]['time_spent'] = time_spent
+        self.current_turn = "black" if self.current_turn == 'white' else 'white'
+        if self.clock.is_flagged(self.current_turn):
+             self.status = 'timeout'
+             self.winner = self.current_turn
+             return{
+                  'success':True,
+                  'move': f"{from_notation}{to_notation}",
+                  'special': move_info.get('special'),
+                  'status': 'timeout',
+                  'winner':self.winner,
+                  'times': self.clock.get_both_times()
+             }
+        self.clock.start(self.current_turn)
         self._update_status()
-        return {
-            'success':True,
-            'move':f"{from_notation}{to_notation}",
-            'special': move_info.get('special'),
-            'status': self.status,
-            'check': self.move_generator.is_in_check(self.current_turn)
-
-        }
+        return{
+             'success': True,
+             'move': f"{from_notation}{to_notation}",
+             'special': move_info.get('special'),
+             'status': self.status,
+             'check': self.move_generator.is_in_check(self.current_turn),
+             'times': self.clock.get_both_times()
+        }        
+        
     def _get_castling_moves(self,row,col):
         piece = self.board.get_piece(row,col)
         if not isinstance(piece,King):
@@ -66,6 +86,7 @@ class GameState:
             moves.append((back_rank,2))
 
         return moves
+    
     def _can_castle_kingside(self, color, back_rank):
         rook = self.board.get_piece(back_rank,7)
         if not isinstance(rook,Rook) or rook.has_moved:
@@ -77,6 +98,7 @@ class GameState:
            self.move_generator._is_square_attacked(back_rank,6,color)):
             return False
         return True
+    
     def _can_castle_queenside(self, color, back_rank):
         rook = self.board.get_piece(back_rank,0)
         if not isinstance(rook,Rook) or rook.has_moved:
@@ -89,6 +111,7 @@ class GameState:
             self.move_generator._is_square_attacked(back_rank,3,color)):
             return False
         return True
+    
     def _get_en_passant_moves(self,row,col):
         piece = self.board.get_piece(row,col)
         if not isinstance(piece, Pawn):
@@ -101,6 +124,7 @@ class GameState:
         if row+direction == ep_row and abs(col-ep_col)==1:
             return [(ep_row,ep_col)]
         return[]
+    
     def _execute_move(self,from_row,from_col,to_row,to_col,promotion_piece):
         piece = self.board.get_piece(from_row,from_col)
         move_info = {}
@@ -127,12 +151,14 @@ class GameState:
                 self._promote_pawn(to_row,to_col,piece.color,promotion_piece)
                 move_info['special'] = 'promotion'
         return move_info
+    
     def _execute_castling(self,from_row,from_col,to_row,to_col):
             self.board.move_piece(from_row,from_col,to_row,to_col)
             if to_col ==6:
                 self.board.move_piece(to_row,7,to_row,5)
             else:
                 self.board.move_piece(to_row,0,to_row,3)
+    
     def _promote_pawn(self,row,col,color,promotion_piece):
             piece_map={
                 'Q': Queen, 'R':Rook,
@@ -140,6 +166,7 @@ class GameState:
             }
             PieceClass = piece_map.get(promotion_piece.upper(),Queen)
             self.board.grid[row][col]= PieceClass(color)
+    
     def _update_status(self):
             color = self.current_turn
             if self.move_generator.is_checkmate(color):
@@ -149,6 +176,7 @@ class GameState:
                 self.status = 'stalemate'
             else:
                 self.status = 'active'
+    
     def get_legal_moves_for_square(self,notation):
             row,col = self.board.notation_to_coords(notation)
             piece = self.board.get_piece(row,col)
@@ -160,6 +188,7 @@ class GameState:
 
             return [self.board.coords_to_notation(r,c) for r,c in moves]
 
+    
     def get_board_state(self):
             board_data =[]
             for row in range(8):
@@ -176,7 +205,76 @@ class GameState:
                     'turn': self.current_turn,
                     'status': self.status,
                     'winner': self.winner,
-                    'move_count': len(self.move_history)
+                    'move_count': len(self.move_history),
+                    'clock': self.clock.to_dict()
 
-                }                                                          
-      
+                }
+
+    def to_dict(self):
+         board_data = {}
+         for row in range(8):
+              for col in range(8):
+                   piece = self.board.get_piece(row,col)
+                   if piece:
+                        square = self.board.coords_to_notation(row,col)
+                        board_data[square]={
+                             'type': piece.__class__.__name__,
+                             'color': piece.color,
+                             'has_moved': piece.has_moved
+                        }
+         return{
+               'board': board_data,
+               'current_turn':  self.current_turn,
+               'en_passant_target': self.en_passant_target,
+               'move_history': self.move_history,
+               'status': self.status,
+               'winner': self.winner,
+               'clock': {
+                    'time_remaining': self.clock.time_remaining,
+                    'increment': self.clock.increment,
+                    'time_per_move': self.clock.time_per_move,
+
+               }
+          }
+
+    @classmethod
+    def from_dict(cls,data):
+         from chess_engine.pieces import Pawn, Rook, Knight,Bishop, Queen,King
+         piece_map = {
+              'Pawn': Pawn,
+              'Rook': Rook,
+              'Knight':Knight,
+              'Bishop': Bishop,
+              'Queen': Queen,
+              'King': King
+         }
+         gs = cls.__new__(cls)
+         gs.board = Board()
+         gs.board.grid =[[None]*8 for _ in range(8)]
+         for square, piece_data in data['board'].items():
+            row, col = Board.notation_to_coords(square)
+            PieceClass = piece_map[piece_data['type']]
+            piece = PieceClass(piece_data['color'])
+            piece.has_moved = piece_data['has_moved']
+            gs.board.grid[row][col] = piece
+
+         gs.move_generator = MoveGenerator(gs.board)
+         gs.current_turn = data['current_turn']
+         gs.en_passant_target = data['en_passant_target']
+         if gs.en_passant_target:
+              gs.en_passant_target = tuple(gs.en_passant_target)
+         gs.move_history = data['move_history']
+         gs.status = data['status']
+         gs.winner = data['winner']
+
+         clock_data = data['clock']
+         gs.clock = ChessClock(
+              minutes = clock_data['time_remaining']['white']/60,
+              increment_seconds = clock_data['increment']
+
+         )    
+         gs.clock.time_remaining = clock_data['time_remaining']
+         gs.clock.time_per_move = clock_data['time_per_move']
+         gs.clock.start(gs.current_turn)
+
+         return gs
