@@ -1,0 +1,22 @@
+<div class="game-controls">
+    <button id="resign-btn" class="btn btn-danger">Resign</button>
+    <button id="ai-move-btn" class="btn btn-secondary">
+        🤖 Ask AI
+    </button>
+    <button id="review-btn" class="btn btn-secondary hidden">
+        View Review
+    </button>
+</div>
+
+<!-- AI difficulty selector -->
+<div id="ai-controls" style="width:100%; margin-top:8px;">
+    <select id="ai-difficulty" style="width:100%; padding:8px;
+            background:#0f3460; color:#eee; border-radius:8px;
+            border:1px solid #1a4a7a;">
+        <option value="beginner">🟢 Beginner (800)</option>
+        <option value="easy">🟡 Easy (1100)</option>
+        <option value="medium" selected>🟠 Medium (1500)</option>
+        <option value="hard">🔴 Hard (1900)</option>
+        <option value="expert">⚫ Expert (2300)</option>
+    </select>
+</div>

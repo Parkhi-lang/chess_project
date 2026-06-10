@@ -1,4 +1,6 @@
+from chess_engine.stockfish_player import StockfishPlayer
 from django.shortcuts import render
+from chess_engine.review import ReviewEngine
 
 # Create your views here.
 from rest_framework.views import APIView
@@ -16,6 +18,101 @@ from .serializers import (GameSerializer, NewGameSerializer,
                            MakeMoveSerializer)
 from chess_engine.game_state import GameState
 
+ai_player = StockfishPlayer(difficulty = 'medium')
+class AIMoveView(APIView):
+    """
+    POST /api/game/{id}/ai-move/
+    Body: {"difficulty": "medium"}  (optional)
+    Stockfish makes a move for the current player.
+    """
+
+    def post(self, request, game_id):
+        game = get_object_or_404(Game, id=game_id)
+
+        if game.status != 'active':
+            return Response(
+                {'error': 'Game is already over'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Optional difficulty change per request
+        difficulty = request.data.get('difficulty', 'medium')
+        ai_player.set_difficulty(difficulty)
+
+        # Restore game state
+        gs = GameState.from_dict(game.game_state_data)
+
+        # Get Stockfish's move
+        move = ai_player.get_best_move(gs)
+        if not move:
+            return Response(
+                {'error': 'No legal moves available'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        from_sq, to_sq = move
+
+        # Execute move through our engine
+        result = gs.make_move(from_sq, to_sq)
+
+        if not result['success']:
+            return Response(
+                {'error': result['error']},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get position evaluation
+        evaluation = ai_player.get_move_evaluation(gs)
+
+        # Save to DB
+        last_move = gs.move_history[-1]
+        Move.objects.create(
+            game=game,
+            move_number=last_move['move_number'],
+            color=last_move['color'],
+            piece=last_move['piece'],
+            from_square=last_move['from'],
+            to_square=last_move['to'],
+            captured=last_move.get('captured'),
+            special=last_move.get('special'),
+            time_spent=last_move.get('time_spent', 0.0)
+        )
+
+        game.status          = result['status']
+        game.winner          = result.get('winner')
+        game.game_state_data = gs.to_dict()
+        game.save()
+
+        return Response({
+            'success':    True,
+            'move':       f"{from_sq}{to_sq}",
+            'from':       from_sq,
+            'to':         to_sq,
+            'status':     result['status'],
+            'check':      result.get('check', False),
+            'evaluation': evaluation,
+            'difficulty': difficulty,
+            'board':      gs.get_board_state()
+        })
+
+class GameReviewView(APIView):
+    def get(self,request,game_id):
+        game = get_object_or_404(Game, id = game_id)
+        gs = GameState.from_dict(game.game_state_data)
+        review = ReviewEngine(
+            move_history = gs.move_history,
+            clock = gs.clock
+        )
+        return Response({
+            'game_id':      str(game.id),
+            'white_player': game.white_player,
+            'black_player': game.black_player,
+            'status':       game.status,
+            'winner':       game.winner,
+            'review':       review.get_full_review(),
+            'special_moves': review.get_special_moves(),
+
+        })
 
 class NewGameView(APIView):
     """

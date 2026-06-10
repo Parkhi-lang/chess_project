@@ -5,3 +5,4 @@ __pycache__/
 db.sqlite3
 *.egg-info/
 .DS_Store
+stockfish/stockfish-windows-x86-64-avx2.exe
