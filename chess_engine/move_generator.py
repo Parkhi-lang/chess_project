@@ -30,7 +30,9 @@ class MoveGenerator:
           elif isinstance(piece,Bishop):
                 return self._sliding_moves(row,col,piece,[(1,1),(1,-1),(-1,1),(-1,-1)])
           elif isinstance(piece,Queen):
-                return self._sliding_moves(row,col,piece, [(0,1),(0,-1),(1,0),(-1,0),(1,1),(1,-1),(-1,-1)])
+                 return self._sliding_moves(row, col, piece,
+                               [(0,1),(0,-1),(1,0),(-1,0),
+                                (1,1),(1,-1),(-1,-1)])
           elif isinstance(piece,Knight):
                 return self._knight_moves(row,col,piece)
           elif isinstance(piece,King):

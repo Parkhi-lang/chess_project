@@ -1,23 +1,42 @@
-"""
-URL configuration for chess_project project.
+# chess_project/urls.py
 
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/6.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
 from django.contrib import admin
-from django.urls import path,include
+from django.urls import path, include
+from django.http import FileResponse, HttpResponse
+import os
+
+def serve_frontend(request):
+    """Serve the chess frontend HTML file through Django."""
+    frontend_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        'frontend', 'index.html'
+    )
+    with open(frontend_path, 'r', encoding='utf-8') as f:
+        return HttpResponse(f.read(), content_type='text/html')
+
+def serve_js(request):
+    """Serve board.js through Django."""
+    js_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        'frontend', 'board.js'
+    )
+    with open(js_path, 'r', encoding='utf-8') as f:
+        return HttpResponse(f.read(),
+                          content_type='application/javascript')
+
+def serve_css(request):
+    """Serve style.css through Django."""
+    css_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        'frontend', 'style.css'
+    )
+    with open(css_path, 'r', encoding='utf-8') as f:
+        return HttpResponse(f.read(), content_type='text/css')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
+    path('board.js', serve_js,       name='serve-js'),
+    path('style.css', serve_css,     name='serve-css'),
+    path('',          serve_frontend, name='frontend'),
 ]

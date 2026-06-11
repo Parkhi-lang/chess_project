@@ -1,22 +1,204 @@
-<div class="game-controls">
-    <button id="resign-btn" class="btn btn-danger">Resign</button>
-    <button id="ai-move-btn" class="btn btn-secondary">
-        🤖 Ask AI
-    </button>
-    <button id="review-btn" class="btn btn-secondary hidden">
-        View Review
-    </button>
-</div>
+<!DOCTYPE html>
+<html lang="en">
 
-<!-- AI difficulty selector -->
-<div id="ai-controls" style="width:100%; margin-top:8px;">
-    <select id="ai-difficulty" style="width:100%; padding:8px;
-            background:#0f3460; color:#eee; border-radius:8px;
-            border:1px solid #1a4a7a;">
-        <option value="beginner">🟢 Beginner (800)</option>
-        <option value="easy">🟡 Easy (1100)</option>
-        <option value="medium" selected>🟠 Medium (1500)</option>
-        <option value="hard">🔴 Hard (1900)</option>
-        <option value="expert">⚫ Expert (2300)</option>
-    </select>
-</div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Engine</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div id="app">
+
+        <!-- ── SETUP SCREEN ── -->
+        <div id="setup-screen" class="screen">
+            <div class="setup-card">
+                <h1>♟️ Chess Engine</h1>
+                <p class="subtitle">Two Player Mode</p>
+
+                <div class="form-group">
+                    <label>White Player</label>
+                    <input type="text" id="white-name" placeholder="Enter name" value="Player 1">
+                </div>
+
+                <div class="form-group">
+                    <label>Black Player</label>
+                    <input type="text" id="black-name" placeholder="Enter name" value="Player 2">
+                </div>
+
+                <div class="form-group">
+                    <label>Time Control (minutes)</label>
+                    <select id="time-control">
+                        <option value="1">1 min (Bullet)</option>
+                        <option value="3">3 min (Blitz)</option>
+                        <option value="5" selected>5 min (Blitz)</option>
+                        <option value="10">10 min (Rapid)</option>
+                        <option value="30">30 min (Classical)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Increment (seconds)</label>
+                    <select id="increment">
+                        <option value="0" selected>0 sec</option>
+                        <option value="2">2 sec</option>
+                        <option value="5">5 sec</option>
+                        <option value="10">10 sec</option>
+                    </select>
+                </div>
+
+                <button id="start-btn" class="btn btn-primary">
+                    Start Game
+                </button>
+            </div>
+        </div>
+
+        <!-- ── GAME SCREEN ── -->
+        <div id="game-screen" class="screen hidden">
+
+            <!-- Left: Board + Clocks -->
+            <div class="game-left">
+
+                <!-- Black player info + clock -->
+                <div class="player-bar" id="black-bar">
+                    <div class="player-info">
+                        <span class="player-color black-dot">●</span>
+                        <span id="black-name-display">Player 2</span>
+                    </div>
+                    <div class="clock" id="black-clock">10:00</div>
+                </div>
+
+                <!-- Chess Board -->
+                <div id="board-container">
+                    <div class="rank-labels">
+                        <span>8</span><span>7</span><span>6</span>
+                        <span>5</span><span>4</span><span>3</span>
+                        <span>2</span><span>1</span>
+                    </div>
+                    <div id="chess-board"></div>
+                </div>
+
+                <!-- File labels -->
+                <div class="file-labels">
+                    <span></span>
+                    <span>a</span><span>b</span><span>c</span>
+                    <span>d</span><span>e</span><span>f</span>
+                    <span>g</span><span>h</span>
+                </div>
+
+                <!-- White player info + clock -->
+                <div class="player-bar" id="white-bar">
+                    <div class="player-info">
+                        <span class="player-color white-dot">●</span>
+                        <span id="white-name-display">Player 1</span>
+                    </div>
+                    <div class="clock" id="white-clock">10:00</div>
+                </div>
+
+                <!-- Status bar -->
+                <div id="status-bar">
+                    <span id="status-text">White's turn</span>
+                </div>
+
+                <!-- ── GAME CONTROLS ── -->
+                <div class="game-controls">
+                    <button id="resign-btn" class="btn btn-danger">
+                        Resign
+                    </button>
+                    <button id="ai-move-btn" class="btn btn-secondary">
+                        🤖 Ask AI
+                    </button>
+                    <button id="review-btn" class="btn btn-secondary hidden">
+                        View Review
+                    </button>
+                </div>
+
+                <!-- ── AI DIFFICULTY ── -->
+                <div id="ai-controls" style="width:100%; margin-top:8px;">
+                    <select id="ai-difficulty" style="width:100%; padding:8px;
+                               background:#0f3460; color:#eee;
+                               border-radius:8px;
+                               border:1px solid #1a4a7a;
+                               font-size:0.9rem;">
+                        <option value="beginner">🟢 Beginner (800)</option>
+                        <option value="easy">🟡 Easy (1100)</option>
+                        <option value="medium" selected>🟠 Medium (1500)</option>
+                        <option value="hard">🔴 Hard (1900)</option>
+                        <option value="expert">⚫ Expert (2300)</option>
+                    </select>
+                </div>
+
+            </div>
+
+            <!-- Right: Move History + Captured -->
+            <div class="game-right">
+
+                <div class="panel">
+                    <h3>Captured Pieces</h3>
+                    <div id="captured-white" class="captured-row">
+                        <small>White captured:</small>
+                        <div id="white-captured"></div>
+                    </div>
+                    <div id="captured-black" class="captured-row">
+                        <small>Black captured:</small>
+                        <div id="black-captured"></div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3>Move History</h3>
+                    <div id="move-history">
+                        <table id="moves-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>White</th>
+                                    <th>Black</th>
+                                </tr>
+                            </thead>
+                            <tbody id="moves-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ── REVIEW SCREEN ── -->
+        <div id="review-screen" class="screen hidden">
+            <div class="review-card">
+                <h2>📊 Game Review</h2>
+                <div id="review-content"></div>
+                <button id="new-game-btn" class="btn btn-primary mt-3">
+                    New Game
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Game over modal -->
+    <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <h2 id="modal-title">Game Over</h2>
+            <p id="modal-message"></p>
+            <div class="modal-buttons">
+                <button id="modal-review" class="btn btn-primary">
+                    View Review
+                </button>
+                <button id="modal-new" class="btn btn-secondary">
+                    New Game
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script MUST be last — after all HTML elements exist -->
+    <script src="board.js"></script>
+
+</body>
+
+</html>
