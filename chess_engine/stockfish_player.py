@@ -77,7 +77,7 @@ class StockfishPlayer:
             os.path.join(
                 os.path.dirname(os.path.dirname(__file__)),
                 'stockfish',
-                'stockfish-windows-x86-64.exe'
+                'stockfish-windows-x86-64-avx2.exe'
             ),
             # Project stockfish folder (Linux/Mac)
             os.path.join(
