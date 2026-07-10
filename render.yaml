@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: chess-engine
+    runtime: python
+    buildCommand: |
+      apt-get install -y stockfish
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+      python manage.py migrate
+    startCommand: gunicorn chess_project.wsgi:application
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: "chess-engine.onrender.com"
+      - key: STOCKFISH_PATH
+        value: "/usr/games/stockfish"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: chess-db
+          property: connectionString
+
+databases:
+  - name: chess-db
+    databaseName: chess_db
+    user: chess_user
